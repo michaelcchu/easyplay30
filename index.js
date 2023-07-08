@@ -3,13 +3,15 @@ const value = {"c":0,"d":2,"e":4,"f":5,"g":7,"a":9,"b":11,"#":1,"&":-1};
 const voices = Array(2);
 let on = false;
 let paused; let LH_track; let RH_track;
+let normalGain;
 
 function makeOscillator() {
     const oscillator = new OscillatorNode(audioContext, {frequency: 0});
-    const gainNode = new GainNode(audioContext);
-    gainNode.gain.value = 0.15 * 1/voices.length;
+    gainNode = new GainNode(audioContext);
+    gainNode.gain.value = 0; //0.15 * 1/voices.length;
+    normalGain = 0.15 * 1/voices.length;
     oscillator.connect(gainNode).connect(audioContext.destination)
-    return oscillator;
+    return {osc: oscillator, gainNode: gainNode};
 }
 
 function voice(keys) {
@@ -24,12 +26,31 @@ function voice(keys) {
     } 
 
     function getOscillator() {
-        return oscillator;
+        return oscillator.osc;
     }
     function down(e) {
         if (on && keys.includes(e.key) && !e.repeat && (e.key != pressedKey) 
         && (index < frequencies.length) && !paused) {
-            oscillator.frequency.value = frequencies[index];
+            const freq = frequencies[index];
+
+            //let gain = 0;
+            //if (freq > 0) {
+            //    gain = normalGain * (49 / freq);
+            //}
+            gain = normalGain;
+
+            if (pressedKey === null) {
+                oscillator.osc.frequency.setTargetAtTime(freq, 
+                    audioContext.currentTime, 0);   
+            } else {
+                oscillator.osc.frequency.setTargetAtTime(freq, 
+                    audioContext.currentTime, 0.003);   
+            }
+            //oscillator.frequency.value = frequencies[index];
+
+            oscillator.gainNode.gain.setTargetAtTime(gain, 
+                audioContext.currentTime, 0.015);
+            
             index++;
             pressedKey = e.key;
        }
@@ -37,7 +58,9 @@ function voice(keys) {
 
     function up(e) {
         if (on && (e.key === pressedKey) && !paused) {
-            oscillator.frequency.value = 0;
+            oscillator.gainNode.gain.setTargetAtTime(0, 
+                audioContext.currentTime, 0.015);
+            //oscillator.frequency.value = 0;
             pressedKey = null;
         }
     }
